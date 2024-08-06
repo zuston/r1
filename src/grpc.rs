@@ -182,7 +182,9 @@ impl ShuffleServer for DefaultShuffleServer {
 
         let app = app_option.unwrap();
 
-        let release_result = app.release_buffer(ticket_id).await;
+        let release_result = app.release_buffer(ticket_id)
+            .instrument_await(format!("releasing buffer for appId: {:?}. shuffleId: {}.", &app_id, shuffle_id))
+            .await;
         if release_result.is_err() {
             return Ok(Response::new(SendShuffleDataResponse {
                 status: StatusCode::NO_BUFFER.into(),
@@ -204,17 +206,19 @@ impl ShuffleServer for DefaultShuffleServer {
         let mut inserted_failure_error = None;
         let mut inserted_total_size = 0;
 
+        let insert_start = util::current_timestamp_ms();
         let mut shuffled_blocks: Vec<_> = blocks_map.into_iter().collect();
         for (partition_id, blocks) in shuffled_blocks {
             if inserted_failure_occurs {
                 continue;
             }
+            let app_id_ref = app_id.clone();
+            let await_tree_msg = format!("inserting data that has costed {}(ms). appId: {:?}. shuffleId: {}. partitionId: {}", util::current_timestamp_ms() - insert_start, &app_id_ref, shuffle_id, partition_id);
             let uid = PartitionedUId {
-                app_id: app_id.clone(),
+                app_id: app_id_ref,
                 shuffle_id,
                 partition_id,
             };
-            let await_tree_msg = format!("insert data for app. appId: {:?}", &uid.app_id);
             let ctx = WritingViewContext::from(uid, blocks);
             let inserted = app.insert(ctx).instrument_await(await_tree_msg).await;
             if inserted.is_err() {
