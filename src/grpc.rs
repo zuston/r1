@@ -32,7 +32,7 @@ use crate::proto::uniffle::{
     ShuffleRegisterRequest, ShuffleRegisterResponse, ShuffleUnregisterByAppIdRequest,
     ShuffleUnregisterByAppIdResponse, ShuffleUnregisterRequest, ShuffleUnregisterResponse,
 };
-use crate::store::{PartitionedData, ResponseDataIndex};
+use crate::store::{Block, PartitionedData, ResponseDataIndex};
 use await_tree::InstrumentAwait;
 use bytes::{BufMut, BytesMut};
 use croaring::treemap::JvmSerializer;
@@ -189,25 +189,15 @@ impl ShuffleServer for DefaultShuffleServer {
                 ret_msg: "No such buffer ticket id, it may be discarded due to timeout".to_string(),
             }));
         }
+        let required_len_with_ticket = release_result.unwrap();
 
-        let contiguous_bytes = req.contiguous_shuffle_data;
-        let mut offset = 0usize;
-
-        let ticket_required_size = release_result.unwrap();
         let mut blocks_map = HashMap::new();
         for shuffle_data in req.shuffle_data {
             let data: PartitionedData = shuffle_data.into();
-            let mut partitioned_blocks = data.blocks;
-            for mut partitioned_block in &mut partitioned_blocks {
-                let len = partitioned_block.length;
-                let bytes = contiguous_bytes.slice(offset..(len as usize + offset));
-                partitioned_block.data = bytes;
-                offset += len as usize;
-            }
-
             let partition_id = data.partition_id;
+            let data_blocks = data.blocks;
             let blocks = blocks_map.entry(partition_id).or_insert_with(|| vec![]);
-            blocks.extend(partitioned_blocks);
+            blocks.extend(data_blocks);
         }
 
         let mut inserted_failure_occurs = false;
@@ -244,10 +234,10 @@ impl ShuffleServer for DefaultShuffleServer {
             inserted_total_size += inserted_size as i64;
         }
 
-        let unused_allocated_size = ticket_required_size - inserted_total_size;
+        let unused_allocated_size = required_len_with_ticket - inserted_total_size;
         if unused_allocated_size != 0 {
             debug!("The required buffer size:[{:?}] has remaining allocated size:[{:?}] of unused, this should not happen",
-                ticket_required_size, unused_allocated_size);
+                required_len_with_ticket, unused_allocated_size);
             if let Err(e) = app.free_allocated_memory_size(unused_allocated_size).await {
                 warn!(
                     "Errors on free allocated size: {:?} for app: {:?}. err: {:#?}",
