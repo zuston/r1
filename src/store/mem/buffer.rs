@@ -1,15 +1,15 @@
 use crate::store::Block;
 use anyhow::Result;
 use croaring::Treemap;
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
-use parking_lot::Mutex;
 
 pub struct MemoryBuffer {
-    buffer: Mutex<BufferInternal>,
+    buffer: RwLock<BufferInternal>,
 }
 
 #[derive(Default, Debug)]
@@ -88,24 +88,24 @@ impl BufferInternal {
 impl MemoryBuffer {
     pub fn new() -> MemoryBuffer {
         MemoryBuffer {
-            buffer: Mutex::new(BufferInternal::new()),
+            buffer: RwLock::new(BufferInternal::new()),
         }
     }
 
     pub fn total_size(&self) -> Result<i64> {
-        return Ok(self.buffer.lock().total_size);
+        return Ok(self.buffer.read().total_size);
     }
 
     pub fn flight_size(&self) -> Result<i64> {
-        return Ok(self.buffer.lock().flight_size);
+        return Ok(self.buffer.read().flight_size);
     }
 
     pub fn staging_size(&self) -> Result<i64> {
-        return Ok(self.buffer.lock().staging_size);
+        return Ok(self.buffer.read().staging_size);
     }
 
     pub fn clear(&self, flight_id: u64, flight_size: u64) -> Result<()> {
-        let mut buffer = self.buffer.lock();
+        let mut buffer = self.buffer.write();
         let flight = &mut buffer.flight;
         let removed = flight.remove(&flight_id);
         if let Some(block_ref) = removed {
@@ -125,7 +125,7 @@ impl MemoryBuffer {
         /// read sequence
         /// 1. from flight (expect: last_block_id not found or last_block_id == 0)
         /// 2. from staging
-        let buffer = self.buffer.lock();
+        let buffer = self.buffer.read();
 
         let mut read_result = vec![];
         let mut read_len = 0i64;
@@ -190,7 +190,7 @@ impl MemoryBuffer {
     }
 
     pub fn spill(&self) -> Result<BufferSpillResult> {
-        let mut buffer = self.buffer.lock();
+        let mut buffer = self.buffer.write();
         let staging: BatchMemoryBlock = { mem::replace(&mut buffer.staging, Default::default()) };
         let staging_ref = Arc::new(staging);
         let flight_id = buffer.flight_counter;
@@ -211,7 +211,7 @@ impl MemoryBuffer {
     }
 
     pub fn append(&self, blocks: Vec<Block>, size: u64) -> Result<()> {
-        let mut buffer = self.buffer.lock();
+        let mut buffer = self.buffer.write();
         let mut staging = &mut buffer.staging;
         staging.push(blocks);
 

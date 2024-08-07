@@ -182,8 +182,12 @@ impl ShuffleServer for DefaultShuffleServer {
 
         let app = app_option.unwrap();
 
-        let release_result = app.release_buffer(ticket_id)
-            .instrument_await(format!("releasing buffer for appId: {:?}. shuffleId: {}.", &app_id, shuffle_id))
+        let release_result = app
+            .release_buffer(ticket_id)
+            .instrument_await(format!(
+                "releasing buffer for appId: {:?}. shuffleId: {}.",
+                &app_id, shuffle_id
+            ))
             .await;
         if release_result.is_err() {
             return Ok(Response::new(SendShuffleDataResponse {

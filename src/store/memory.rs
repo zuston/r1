@@ -43,9 +43,9 @@ use crate::store::mem::buffer::MemoryBuffer;
 use crate::store::mem::capacity::CapacitySnapshot;
 use crate::store::mem::ticket::TicketManager;
 use croaring::Treemap;
+use fxhash::{FxBuildHasher, FxHasher};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use fxhash::{FxBuildHasher, FxHasher};
 
 pub struct MemoryStore {
     state: DashMap<PartitionedUId, Arc<MemoryBuffer>, BuildHasherDefault<FxHasher>>,
@@ -95,8 +95,7 @@ impl MemoryStore {
 
         /// the dashmap shard that will effect the lookup performance.
         let shard_amount = conf.dashmap_shard_amount.unwrap_or(96);
-        let dashmap =
-            DashMap::with_hasher_and_shard_amount(FxBuildHasher::default(), shard_amount);
+        let dashmap = DashMap::with_hasher_and_shard_amount(FxBuildHasher::default(), shard_amount);
 
         MemoryStore {
             state: dashmap,
