@@ -3883,6 +3883,7 @@ dependencies = [
  "log",
  "once_cell",
  "opendal",
+ "parking_lot",
  "pin-project-lite",
  "poem",
  "pprof",
