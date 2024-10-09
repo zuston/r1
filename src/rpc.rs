@@ -99,7 +99,8 @@ impl DefaultRpcService {
         let parallelism = GRPC_PARALLELISM.get();
         info!("grpc service with parallelism: [{}]", &parallelism);
 
-        for _ in 0..parallelism.into() {
+        let core_ids = core_affinity::get_core_ids().unwrap();
+        for (_, core_id) in core_ids.into_iter().enumerate() {
             let shuffle_server = DefaultShuffleServer::from(app_manager_ref.clone());
             let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), grpc_port as u16);
             let service = ShuffleServerServer::new(shuffle_server)
@@ -110,10 +111,9 @@ impl DefaultRpcService {
             // every std::thread to bound the tokio thread to eliminate thread context switch.
             // this has been verified by benchmark of terasort 1TB that the long tail latency
             // will be reduced from 2min -> 4sec
-            // todo:
-            // 1. apply into the urpc service
-            // 2. remove some unnecessary configs
             std::thread::spawn(move || {
+                core_affinity::set_for_current(core_id);
+
                 tokio::runtime::Builder::new_current_thread()
                     .enable_all()
                     .build()
