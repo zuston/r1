@@ -263,7 +263,7 @@ impl LocalDisk {
                 .instrument_await("writing bytes")
                 .await?;
         }
-        writer.flush().instrument_await("writer flushing").await?;
+        // writer.flush().instrument_await("writer flushing").await?;
         timer.observe_duration();
 
         Ok(())
