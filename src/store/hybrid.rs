@@ -309,7 +309,7 @@ impl HybridStore {
         let timer = Instant::now();
         let mem_target =
             (self.hot_store.get_capacity()? as f32 * self.config.memory_spill_low_watermark) as i64;
-        let buffers = self.hot_store.pickup_spilled_blocks(mem_target)?;
+        let buffers = self.hot_store.pickup_spill_blocks(mem_target)?;
         debug!(
             "[Spill] Getting all spill blocks. target_size:{}. it costs {}(ms)",
             mem_target,

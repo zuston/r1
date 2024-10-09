@@ -149,7 +149,7 @@ impl MemoryStore {
         self.budget.move_allocated_to_used(size)
     }
 
-    pub fn pickup_spilled_blocks(
+    pub fn pickup_spill_blocks(
         &self,
         mem_target_len: i64,
     ) -> Result<HashMap<PartitionedUId, Arc<MemoryBuffer>>, anyhow::Error> {
