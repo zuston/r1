@@ -30,7 +30,7 @@ use bytes::{Bytes, BytesMut};
 use log::{debug, error, info, warn};
 use opendal::services::Fs;
 use opendal::{Metadata, Operator};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{IoSlice, Read, Seek, SeekFrom, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -255,15 +255,16 @@ impl LocalDisk {
         // todo: the capacity should be optimized.
         let mut writer = BufWriter::with_capacity(self.write_buf_capacity as usize, writer);
 
-        for x in data.always_composed().iter() {
-            // we must use the write_all to ensure the buffer consumed by the OS.
-            // Please see the detail: https://doc.rust-lang.org/std/io/trait.Write.html#method.write_all
-            writer
-                .write_all(&x)
-                .instrument_await("writing bytes")
-                .await?;
-        }
-        // writer.flush().instrument_await("writer flushing").await?;
+        let composed_bytes = data.always_composed();
+        let bufs = composed_bytes
+            .iter()
+            .map(|x| IoSlice::new(x))
+            .collect::<Vec<IoSlice>>();
+        writer
+            .write_vectored(&bufs)
+            .instrument_await("writing bytes")
+            .await?;
+        writer.flush().instrument_await("writer flushing").await?;
         timer.observe_duration();
 
         Ok(())
