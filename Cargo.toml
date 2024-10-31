@@ -26,6 +26,10 @@ edition = "2021"
 name = "uniffle-worker"
 path = "src/main.rs"
 
+[[bin]]
+name = "r1-tool"
+path = "src/cli_tool.rs"
+
 [lib]
 name = "uniffle_worker"
 path = "src/lib.rs"
