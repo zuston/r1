@@ -1,0 +1,15 @@
+version: "3"
+
+services:
+  build-release:
+    build: ./centos7
+    volumes:
+      - ~/.m2:/root/.m2:rw
+      - ~/.sbt:/root/.sbt:rw
+      - ~/.cargo/git:/root/.cargo/git:rw
+      - ~/.cargo/registry:/root/.cargo/registry:rw
+      - ./../:/R1:rw
+      - ./../target-docker:/R1/target:rw
+    environment:
+      RUSTFLAGS: "-C target-cpu=skylake"
+    command: "bash -c 'source ~/.bashrc && cd /R1 && cargo build --features hdrs,jemalloc,allocator-analysis --release'"

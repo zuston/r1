@@ -1,0 +1,38 @@
+name: ReleaseBot
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-snapshot:
+    name: Build Snapshot
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: s4u/setup-maven-action@main
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - uses: prompt/actions-commit-hash@v3
+        id: commit
+
+      - uses: ScribeMD/rootless-docker@0.2.2
+        if: steps.cache.outputs.cache-hit != 'true'
+
+      - uses: ScribeMD/docker-cache@0.5.0
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          key: docker-centos7-${{ hashFiles('dev/centos7/Dockerfile') }}
+
+      - name: Build
+        run: |
+          sed -i 's/docker-compose -f/docker compose -f/g' ./release.sh
+          ./release.sh
+
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          name: uniffle-worker
+          path: target-docker/release/uniffle-worker
