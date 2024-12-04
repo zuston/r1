@@ -331,6 +331,7 @@ impl ShuffleServer for DefaultShuffleServer {
                 status: StatusCode::NO_REGISTER.into(),
                 ret_msg: "App not found".to_string(),
                 data_file_len: 0,
+                storage_ids: vec![],
             }));
         }
 
@@ -358,6 +359,7 @@ impl ShuffleServer for DefaultShuffleServer {
                 status: StatusCode::INTERNAL_ERROR.into(),
                 ret_msg: format!("{:?}", error_msg),
                 data_file_len: 0,
+                storage_ids: vec![],
             }));
         }
 
@@ -368,6 +370,7 @@ impl ShuffleServer for DefaultShuffleServer {
                     status: StatusCode::SUCCESS.into(),
                     ret_msg: "".to_string(),
                     data_file_len: data_index.data_file_len,
+                    storage_ids: vec![],
                 }))
             }
         }
